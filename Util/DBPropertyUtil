@@ -1,0 +1,14 @@
+namespace CarConnectUtilLibrary
+{
+    public static class DBPropertyUtil
+    {
+        // You can later modify this to read from config
+        public static string GetConnectionString()
+        {
+            // Replace this with your actual server/database info
+          
+            return "Server=DESKTOP-2VDP1PQ\\SQLEXPRESS;Database=CarConnect;Trusted_Connection=True;Encrypt=False";
+
+        }
+    }
+}
