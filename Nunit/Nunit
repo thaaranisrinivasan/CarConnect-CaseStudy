@@ -1,0 +1,359 @@
+using NUnit.Framework;
+using CarConnectEntityLibrary;
+using CarConnectDaoLibrary;
+using System;
+using System.Collections.Generic;
+
+
+
+namespace CarConnectTests
+{
+    [TestFixture]
+    public class UnitTest1
+    {
+        private CustomerService _customerService;
+        private VehicleService _vehicleService;
+        private ReservationService _reservationService;
+        private AdminService _adminService;
+
+        private ICustomerRepository _customerRepository;
+        private IVehicleRepository _vehicleRepository;
+        private IReservationRepository _reservationRepository;
+        private IAdminRepository _adminRepository;
+
+        [SetUp]
+        public void SetUp()
+        {
+            // Initialize repositories
+            _customerRepository = new MockCustomerRepository();
+            _vehicleRepository = new MockVehicleRepository();
+            _reservationRepository = new MockReservationRepository();
+            _adminRepository = new MockAdminRepository();
+
+            // Initialize service classes
+            _customerService = new CustomerService(_customerRepository);
+            _vehicleService = new VehicleService(_vehicleRepository);
+            _reservationService = new ReservationService(_reservationRepository);
+            _adminService = new AdminService(_adminRepository);
+        }
+
+        // CustomerService Tests
+        [Test]
+        public void TestRegisterCustomer_ValidInput_ShouldReturnTrue()
+        {
+            // Arrange
+            var customer = new Customer { CustomerId = 1, Name = "John Doe", Email = "john.doe@example.com", Password = "password123" };
+
+            // Act
+            bool result = _customerService.RegisterCustomer(customer);
+
+            // Assert
+            Assert.IsTrue(result);
+        }
+
+        [Test]
+        public void TestRegisterCustomer_InvalidEmail_ShouldThrowException()
+        {
+            // Arrange
+            var customer = new Customer { CustomerId = 1, Name = "John Doe", Email = "invalid-email", Password = "password123" };
+
+            // Act & Assert
+            Assert.Throws<ArgumentException>(() => _customerService.RegisterCustomer(customer));
+        }
+
+        // VehicleService Tests
+        [Test]
+        public void TestAddVehicle_ValidVehicle_ShouldReturnTrue()
+        {
+            // Arrange
+            var vehicle = new Vehicle { VehicleId = 1, Make = "Toyota", Model = "Corolla", Year = 2022, RegistrationNumber = "ABC123", IsAvailable = true, DailyRate = 30.5M };
+
+            // Act
+            bool result = _vehicleService.AddVehicle(vehicle);
+
+            // Assert
+            Assert.IsTrue(result);
+        }
+
+        [Test]
+        public void TestAddVehicle_InvalidVehicleId_ShouldThrowException()
+        {
+            // Arrange
+            var vehicle = new Vehicle { VehicleId = -1, Make = "Toyota", Model = "Corolla", Year = 2022, RegistrationNumber = "ABC123", IsAvailable = true, DailyRate = 30.5M };
+
+            // Act & Assert
+            Assert.Throws<ArgumentException>(() => _vehicleService.AddVehicle(vehicle));
+        }
+
+        // ReservationService Tests
+        [Test]
+        public void TestMakeReservation_ValidInput_ShouldReturnTrue()
+        {
+            // Arrange
+            int vehicleId = 1;
+            int customerId = 1;
+            DateTime reservationDate = DateTime.Now;
+            int duration = 3;
+
+            // Act
+            bool result = _reservationService.MakeReservation(vehicleId, customerId, reservationDate, duration);
+
+            // Assert
+            Assert.IsTrue(result);
+        }
+
+        [Test]
+        public void TestMakeReservation_InvalidVehicleId_ShouldThrowException()
+        {
+            // Arrange
+            int invalidVehicleId = -1;
+            int customerId = 1;
+            DateTime reservationDate = DateTime.Now;
+            int duration = 3;
+
+            // Act & Assert
+            Assert.Throws<ArgumentException>(() => _reservationService.MakeReservation(invalidVehicleId, customerId, reservationDate, duration));
+        }
+
+        [Test]
+        
+        public void TestGetReservationsByCustomer_ValidCustomerId_ShouldReturnReservations()
+        {
+            // Arrange
+            int customerId = 1;
+
+            // Add reservations to the mock repository using the service
+            _reservationService.MakeReservation(1, customerId, DateTime.Now, 3);
+            _reservationService.MakeReservation(2, customerId, DateTime.Now, 5);
+
+            // Act
+            var reservations = _reservationService.GetReservationsByCustomer(customerId);
+
+            // Assert
+            Assert.AreEqual(2, reservations.Count);
+        }
+
+        // AdminService Tests
+        [Test]
+        public void TestAuthenticateAdmin_ValidCredentials_ShouldReturnTrue()
+        {
+            // Arrange
+            string username = "admin";
+            string password = "admin123";
+
+            // Act
+            bool result = _adminService.AuthenticateAdmin(username, password);
+
+            // Assert
+            Assert.IsTrue(result);
+
+        }
+
+        [Test]
+        public void TestAuthenticateAdmin_InvalidCredentials_ShouldReturnFalse()
+        {
+            // Arrange
+            string username = "admin";
+            string password = "wrongpassword";
+
+            // Act
+            bool result = _adminService.AuthenticateAdmin(username, password);
+
+            // Assert
+            Assert.IsFalse(result);
+        }
+    }
+
+    // Mock Repositories
+    public class MockCustomerRepository : ICustomerRepository
+    {
+        private List<Customer> _customers = new List<Customer>();
+
+        public bool AddCustomer(Customer customer)
+        {
+            if (string.IsNullOrEmpty(customer.Email) || !customer.Email.Contains("@"))
+                throw new ArgumentException("Invalid email");
+
+            _customers.Add(customer);
+            return true;
+        }
+
+        public Customer GetCustomerById(int customerId)
+        {
+            return _customers.Find(c => c.CustomerId == customerId);
+        }
+    }
+
+    public class MockVehicleRepository : IVehicleRepository
+    {
+        private List<Vehicle> _vehicles = new List<Vehicle>();
+
+        public bool AddVehicle(Vehicle vehicle)
+        {
+            if (vehicle.VehicleId <= 0)
+                throw new ArgumentException("Invalid vehicle ID");
+
+            _vehicles.Add(vehicle);
+            return true;
+        }
+
+        public Vehicle GetVehicleById(int vehicleId)
+        {
+            return _vehicles.Find(v => v.VehicleId == vehicleId);
+        }
+    }
+
+    public class MockReservationRepository : IReservationRepository
+    {
+        private List<Reservation> _reservations = new List<Reservation>();
+
+        public bool AddReservation(Reservation reservation)
+        {
+            _reservations.Add(reservation);
+            return true;
+        }
+
+        public List<Reservation> GetReservationsByCustomer(int customerId)
+        {
+            return _reservations.FindAll(r => r.CustomerId == customerId);
+        }
+    }
+
+    public class MockAdminRepository : IAdminRepository
+    {
+        public bool AuthenticateAdmin(string username, string password)
+        {
+            return username == "admin" && password == "admin123";
+        }
+    }
+
+    // Service Classes
+    public class CustomerService
+    {
+        private readonly ICustomerRepository _customerRepository;
+
+        public CustomerService(ICustomerRepository customerRepository)
+        {
+            _customerRepository = customerRepository;
+        }
+
+        public bool RegisterCustomer(Customer customer)
+        {
+            return _customerRepository.AddCustomer(customer);
+        }
+    }
+
+    public class VehicleService
+    {
+        private readonly IVehicleRepository _vehicleRepository;
+
+        public VehicleService(IVehicleRepository vehicleRepository)
+        {
+            _vehicleRepository = vehicleRepository;
+        }
+
+        public bool AddVehicle(Vehicle vehicle)
+        {
+            return _vehicleRepository.AddVehicle(vehicle);
+        }
+    }
+
+    public class ReservationService
+    {
+        private readonly IReservationRepository _reservationRepository;
+
+        public ReservationService(IReservationRepository reservationRepository)
+        {
+            _reservationRepository = reservationRepository;
+        }
+
+        public bool MakeReservation(int vehicleId, int customerId, DateTime reservationDate, int duration)
+        {
+            if (vehicleId <= 0 || customerId <= 0)
+                throw new ArgumentException("Invalid vehicle or customer ID");
+
+            var reservation = new Reservation(vehicleId, customerId, reservationDate, duration);
+            return _reservationRepository.AddReservation(reservation);
+        }
+
+        public List<Reservation> GetReservationsByCustomer(int customerId)
+        {
+            return _reservationRepository.GetReservationsByCustomer(customerId);
+        }
+    }
+
+    public class AdminService
+    {
+        private readonly IAdminRepository _adminRepository;
+
+        public AdminService(IAdminRepository adminRepository)
+        {
+            _adminRepository = adminRepository;
+        }
+
+        public bool AuthenticateAdmin(string username, string password)
+        {
+            return _adminRepository.AuthenticateAdmin(username, password);
+        }
+    }
+
+    // Entity Classes
+    public class Customer
+    {
+        public int CustomerId { get; set; }
+        public string Name { get; set; }
+        public string Email { get; set; }
+        public string Password { get; set; }
+    }
+
+    public class Vehicle
+    {
+        public int VehicleId { get; set; }
+        public string Make { get; set; }
+        public string Model { get; set; }
+        public int Year { get; set; }
+        public string RegistrationNumber { get; set; }
+        public bool IsAvailable { get; set; }
+        public decimal DailyRate { get; set; }
+    }
+
+    public class Reservation
+    {
+        public int VehicleId { get; set; }
+        public int CustomerId { get; set; }
+        public DateTime ReservationDate { get; set; }
+        public int Duration { get; set; }
+
+        public Reservation(int vehicleId, int customerId, DateTime reservationDate, int duration)
+        {
+            VehicleId = vehicleId;
+            CustomerId = customerId;
+            ReservationDate = reservationDate;
+            Duration = duration;
+        }
+    }
+
+    // Repository Interfaces
+    public interface ICustomerRepository
+    {
+        bool AddCustomer(Customer customer);
+        Customer GetCustomerById(int customerId);
+    }
+
+    public interface IVehicleRepository
+    {
+        bool AddVehicle(Vehicle vehicle);
+        Vehicle GetVehicleById(int vehicleId);
+    }
+
+    public interface IReservationRepository
+    {
+        bool AddReservation(Reservation reservation);
+        List<Reservation> GetReservationsByCustomer(int customerId);
+    }
+
+    public interface IAdminRepository
+    {
+        bool AuthenticateAdmin(string username, string password);
+    }
+}
